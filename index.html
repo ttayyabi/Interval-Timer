@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Interval Timer</title>
@@ -10,6 +9,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Timer">
+
+  <!-- Embedded Minimalist Stopwatch App Icon -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180' width='180' height='180'><rect width='180' height='180' fill='%231c1c1e' rx='40'/><circle cx='90' cy='95' r='45' fill='none' stroke='%2330d158' stroke-width='8'/><rect x='86' y='32' width='8' height='16' rx='4' fill='%2330d158'/><line x1='90' y1='95' x2='90' y2='68' stroke='%23ffffff' stroke-width='6' stroke-linecap='round'/></svg>">
 
   <style>
     * {
@@ -300,7 +302,7 @@
       renderExercises();
     }
 
-    // Audio Beep Synthesizer (Works 100% offline without sound files)
+    // Audio Beep Synthesizer
     function playBeep(freq = 880, duration = 0.2) {
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -317,9 +319,17 @@
       }
     }
 
-    function triggerHaptics() {
+    // 1-Second Continuous Vibration
+    function triggerLongVibration() {
       if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]); // Dual pulse vibration
+        navigator.vibrate(1000); // 1000ms = 1 full second vibration
+      }
+    }
+
+    // Short Haptic for Rest Period endings
+    function triggerShortHaptics() {
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
       }
     }
 
@@ -352,7 +362,7 @@
 
         if (timeRemaining > 1) {
           timeRemaining--;
-          if (timeRemaining <= 3) playBeep(440, 0.1); // Short warning beep at 3, 2, 1
+          if (timeRemaining <= 3) playBeep(440, 0.1);
           updateTimerUI();
         } else {
           advanceTimer();
@@ -361,28 +371,43 @@
     }
 
     function advanceTimer() {
-      playBeep(880, 0.4); // High completion chime
-      triggerHaptics();
+      playBeep(880, 0.4);
 
-      if (!isResting && restDuration > 0) {
-        isResting = true;
-        timeRemaining = restDuration;
-      } else {
-        isResting = false;
-        if (currentIndex < exercises.length - 1) {
-          currentIndex++;
-          timeRemaining = exercises[currentIndex].duration;
-        } else if (currentRound < totalRounds) {
-          currentRound++;
-          currentIndex = 0;
-          timeRemaining = exercises[0].duration;
+      if (!isResting) {
+        // Just finished an exercise -> Trigger 1s Vibration!
+        triggerLongVibration();
+
+        if (restDuration > 0) {
+          isResting = true;
+          timeRemaining = restDuration;
         } else {
-          alert("Workout Completed! Great Job!");
-          resetWorkout();
-          return;
+          // No rest period configured, move straight to next exercise or round
+          moveToNextExerciseOrRound();
         }
+      } else {
+        // Just finished a rest period -> Trigger short notification haptic
+        triggerShortHaptics();
+        isResting = false;
+        moveToNextExerciseOrRound();
       }
+
       updateTimerUI();
+    }
+
+    function moveToNextExerciseOrRound() {
+      if (currentIndex < exercises.length - 1) {
+        currentIndex++;
+        timeRemaining = exercises[currentIndex].duration;
+      } else if (currentRound < totalRounds) {
+        currentRound++;
+        currentIndex = 0;
+        timeRemaining = exercises[0].duration;
+      } else {
+        // Entire workout finished
+        playBeep(880, 0.6);
+        setTimeout(() => alert("Workout Completed! Great Job!"), 100);
+        resetWorkout();
+      }
     }
 
     function updateTimerUI() {
