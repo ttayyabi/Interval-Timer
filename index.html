@@ -29,6 +29,12 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      transition: background-color 0.15s ease;
+    }
+
+    /* Flash effect on transition */
+    body.flash-transition {
+      background-color: #30d158 !important;
     }
 
     h1 {
@@ -230,14 +236,12 @@
   </div>
 
   <script>
-    // Initial Default Exercises
     let defaultExercises = [
       { name: "Push-ups", duration: 30 },
       { name: "Plank", duration: 45 },
       { name: "Jumping Jacks", duration: 30 }
     ];
 
-    // Load from Local Storage or set defaults
     let exercises = JSON.parse(localStorage.getItem('timer_exercises')) || defaultExercises;
     let totalRounds = parseInt(localStorage.getItem('timer_rounds')) || 3;
 
@@ -246,9 +250,7 @@
     let timeRemaining = 0;
     let isPaused = false;
     let timerInterval = null;
-    let audioCtx = null;
 
-    // Save configuration to local storage
     function saveData() {
       localStorage.setItem('timer_exercises', JSON.stringify(exercises));
       localStorage.setItem('timer_rounds', document.getElementById('total-rounds').value);
@@ -291,27 +293,18 @@
       renderExercises();
     }
 
-    // Audio Beep Synthesizer
-    function playBeep(freq = 880, duration = 0.2) {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {
-        console.log("Audio not allowed yet");
-      }
+    // Screen Flash Visual Cue
+    function triggerScreenFlash() {
+      document.body.classList.add('flash-transition');
+      setTimeout(() => {
+        document.body.classList.remove('flash-transition');
+      }, 300);
     }
 
-    // 1-Second Continuous Vibration for Exercise Transitions
-    function triggerLongVibration() {
-      if (navigator.vibrate) {
-        navigator.vibrate(1000); // 1000ms = 1 full second vibration
+    // Vibration Trigger (for supported Android devices)
+    function triggerVibration() {
+      if ("vibrate" in navigator) {
+        navigator.vibrate([300, 100, 300, 100, 300]);
       }
     }
 
@@ -324,9 +317,6 @@
       currentRound = 1;
       currentIndex = 0;
       timeRemaining = exercises[0].duration;
-
-      // Unlock Web Audio context on user gesture
-      playBeep(600, 0.1);
 
       document.getElementById('config-screen').style.display = 'none';
       document.getElementById('timer-screen').style.display = 'flex';
@@ -342,7 +332,6 @@
 
         if (timeRemaining > 1) {
           timeRemaining--;
-          if (timeRemaining <= 3) playBeep(440, 0.1);
           updateTimerUI();
         } else {
           advanceTimer();
@@ -351,9 +340,8 @@
     }
 
     function advanceTimer() {
-      // Audio beep and 1s vibration at the end of every exercise
-      playBeep(880, 0.4);
-      triggerLongVibration();
+      triggerScreenFlash();
+      triggerVibration();
 
       if (currentIndex < exercises.length - 1) {
         currentIndex++;
@@ -363,8 +351,6 @@
         currentIndex = 0;
         timeRemaining = exercises[0].duration;
       } else {
-        // Entire workout finished
-        playBeep(880, 0.6);
         setTimeout(() => alert("Workout Completed! Great Job!"), 100);
         resetWorkout();
         return;
@@ -401,7 +387,6 @@
       document.getElementById('timer-screen').style.display = 'none';
     }
 
-    // Save rounds input when changed directly
     document.getElementById('total-rounds').addEventListener('change', saveData);
 
     renderExercises();
