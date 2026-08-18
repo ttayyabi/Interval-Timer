@@ -1,30 +1,432 @@
-import SwiftUI
-import WebKit
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Interval Timer</title>
+  
+  <!-- iOS Standalone Web App Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Timer">
 
-struct WebView: UIViewRepresentable {
-    func makeUIView(context: Context) -> WKWebView {
-        let webConfiguration = WKWebViewConfiguration()
-        // Allows inline media playback and Web APIs
-        webConfiguration.allowsInlineMediaPlayback = true
-        
-        let webView = WKWebView(frame: .zero, configuration: webConfiguration)
-        
-        // Load local index.html file
-        if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
-            let htmlUrl = URL(fileURLWithPath: htmlPath)
-            webView.loadFileURL(htmlUrl, allowingReadAccessTo: htmlUrl.deletingLastPathComponent())
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #000;
+      color: #fff;
+      margin: 0;
+      padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 16px);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 10px 0 20px;
+      text-align: center;
+      letter-spacing: -0.5px;
+    }
+
+    .card {
+      background: #1c1c1e;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 13px;
+      color: #8e8e93;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input {
+      width: 100%;
+      background: #2c2c2e;
+      border: 1px solid #3a3a3c;
+      color: #fff;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #0a84ff;
+    }
+
+    .exercise-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #2c2c2e;
+    }
+
+    .exercise-item:last-child {
+      border-bottom: none;
+    }
+
+    .delete-btn {
+      background: #ff453a;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #30d158;
+      color: #000;
+      border: none;
+      width: 100%;
+      padding: 18px;
+      border-radius: 14px;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity 0.1s ease;
+    }
+
+    .btn:active {
+      opacity: 0.8;
+    }
+
+    .btn-secondary {
+      background: #0a84ff;
+      color: #fff;
+      font-size: 16px;
+      padding: 12px;
+      border-radius: 10px;
+    }
+
+    .btn-danger { background: #ff453a; color: #fff; }
+    .btn-orange { background: #ff9f0a; color: #fff; }
+
+    /* Timer Screen Layout */
+    #timer-screen {
+      display: none;
+      text-align: center;
+      flex: 1;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+
+    .round-indicator {
+      font-size: 22px;
+      color: #8e8e93;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-work { background: rgba(48, 209, 88, 0.2); color: #30d158; }
+    .badge-rest { background: rgba(10, 132, 255, 0.2); color: #0a84ff; }
+
+    .exercise-title {
+      font-size: 38px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin: 15px 0 5px;
+      line-height: 1.1;
+      padding: 0 10px;
+    }
+
+    .timer-display {
+      font-size: 120px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      margin: 10px 0;
+    }
+
+    .timer-warning {
+      color: #ff453a;
+    }
+
+    .subtext {
+      color: #8e8e93;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CONFIGURATION VIEW -->
+  <div id="config-screen">
+    <h1>Interval Timer</h1>
+    
+    <div class="card">
+      <label>Workout Settings</label>
+      <div style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+          <small style="color:#8e8e93;">Rounds</small>
+          <input type="number" id="total-rounds" value="3" min="1">
+        </div>
+        <div style="flex: 1;">
+          <small style="color:#8e8e93;">Rest (Sec)</small>
+          <input type="number" id="rest-duration" value="15" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Exercises</label>
+      <div id="exercise-list"></div>
+    </div>
+
+    <div class="card">
+      <label>Add New Exercise</label>
+      <input type="text" id="new-name" placeholder="Exercise Name (e.g., Squats)">
+      <input type="number" id="new-duration" value="30" placeholder="Duration (seconds)">
+      <button class="btn btn-secondary" onclick="addExercise()">+ Add Exercise</button>
+    </div>
+
+    <button class="btn" onclick="startWorkout()">Start Workout</button>
+  </div>
+
+  <!-- ACTIVE TIMER VIEW -->
+  <div id="timer-screen">
+    <div>
+      <div class="round-indicator" id="round-text">Round 1 of 3</div>
+      <div class="badge" id="status-badge">EXERCISE</div>
+    </div>
+
+    <div>
+      <div class="exercise-title" id="exercise-display">Push-ups</div>
+      <div class="timer-display" id="time-display">30</div>
+      <div class="subtext">SECONDS REMAINING</div>
+    </div>
+
+    <div>
+      <button class="btn btn-orange" id="pause-btn" onclick="togglePause()">Pause</button>
+      <button class="btn btn-danger" style="margin-top: 12px;" onclick="resetWorkout()">Stop Workout</button>
+    </div>
+  </div>
+
+  <script>
+    // Initial Default Exercises
+    let defaultExercises = [
+      { name: "Push-ups", duration: 30 },
+      { name: "Plank", duration: 45 },
+      { name: "Jumping Jacks", duration: 30 }
+    ];
+
+    // Load from Local Storage or set defaults
+    let exercises = JSON.parse(localStorage.getItem('timer_exercises')) || defaultExercises;
+    let totalRounds = parseInt(localStorage.getItem('timer_rounds')) || 3;
+    let restDuration = parseInt(localStorage.getItem('timer_rest')) || 15;
+
+    let currentRound = 1;
+    let currentIndex = 0;
+    let timeRemaining = 0;
+    let isResting = false;
+    let isPaused = false;
+    let timerInterval = null;
+    let audioCtx = null;
+
+    // Save configuration to local storage
+    function saveData() {
+      localStorage.setItem('timer_exercises', JSON.stringify(exercises));
+      localStorage.setItem('timer_rounds', document.getElementById('total-rounds').value);
+      localStorage.setItem('timer_rest', document.getElementById('rest-duration').value);
+    }
+
+    function renderExercises() {
+      const container = document.getElementById('exercise-list');
+      container.innerHTML = '';
+      exercises.forEach((ex, i) => {
+        container.innerHTML += `
+          <div class="exercise-item">
+            <div>
+              <strong style="font-size: 17px;">${ex.name}</strong><br>
+              <small style="color: #8e8e93;">${ex.duration} seconds</small>
+            </div>
+            <button class="delete-btn" onclick="deleteExercise(${i})">Delete</button>
+          </div>
+        `;
+      });
+      document.getElementById('total-rounds').value = totalRounds;
+      document.getElementById('rest-duration').value = restDuration;
+    }
+
+    function addExercise() {
+      const nameInput = document.getElementById('new-name');
+      const durationInput = document.getElementById('new-duration');
+      const name = nameInput.value.trim();
+      const duration = parseInt(durationInput.value);
+
+      if (name && duration > 0) {
+        exercises.push({ name, duration });
+        nameInput.value = '';
+        saveData();
+        renderExercises();
+      }
+    }
+
+    function deleteExercise(index) {
+      exercises.splice(index, 1);
+      saveData();
+      renderExercises();
+    }
+
+    // Audio Beep Synthesizer (Works 100% offline without sound files)
+    function playBeep(freq = 880, duration = 0.2) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.log("Audio not allowed yet");
+      }
+    }
+
+    function triggerHaptics() {
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]); // Dual pulse vibration
+      }
+    }
+
+    function startWorkout() {
+      if (exercises.length === 0) return;
+      saveData();
+
+      totalRounds = parseInt(document.getElementById('total-rounds').value) || 1;
+      restDuration = parseInt(document.getElementById('rest-duration').value) || 0;
+      
+      currentRound = 1;
+      currentIndex = 0;
+      isResting = false;
+      timeRemaining = exercises[0].duration;
+
+      // Unlock Web Audio context on user gesture
+      playBeep(600, 0.1);
+
+      document.getElementById('config-screen').style.display = 'none';
+      document.getElementById('timer-screen').style.display = 'flex';
+      
+      updateTimerUI();
+      runTimer();
+    }
+
+    function runTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (isPaused) return;
+
+        if (timeRemaining > 1) {
+          timeRemaining--;
+          if (timeRemaining <= 3) playBeep(440, 0.1); // Short warning beep at 3, 2, 1
+          updateTimerUI();
+        } else {
+          advanceTimer();
         }
-        
-        webView.scrollView.isScrollEnabled = false // Keep fixed app UI
-        return webView
+      }, 1000);
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
-}
+    function advanceTimer() {
+      playBeep(880, 0.4); // High completion chime
+      triggerHaptics();
 
-struct ContentView: View {
-    var body: some View {
-        WebView()
-            .edgesIgnoringSafeArea(.all)
+      if (!isResting && restDuration > 0) {
+        isResting = true;
+        timeRemaining = restDuration;
+      } else {
+        isResting = false;
+        if (currentIndex < exercises.length - 1) {
+          currentIndex++;
+          timeRemaining = exercises[currentIndex].duration;
+        } else if (currentRound < totalRounds) {
+          currentRound++;
+          currentIndex = 0;
+          timeRemaining = exercises[0].duration;
+        } else {
+          alert("Workout Completed! Great Job!");
+          resetWorkout();
+          return;
+        }
+      }
+      updateTimerUI();
     }
-}
+
+    function updateTimerUI() {
+      document.getElementById('round-text').innerText = `Round ${currentRound} of ${totalRounds}`;
+      const badge = document.getElementById('status-badge');
+      const timeDisplay = document.getElementById('time-display');
+
+      if (isResting) {
+        badge.innerText = "REST PERIOD";
+        badge.className = "badge badge-rest";
+        document.getElementById('exercise-display').innerText = "REST";
+        document.getElementById('exercise-display').style.color = "#0a84ff";
+      } else {
+        badge.innerText = `EXERCISE ${currentIndex + 1}/${exercises.length}`;
+        badge.className = "badge badge-work";
+        document.getElementById('exercise-display').innerText = exercises[currentIndex].name;
+        document.getElementById('exercise-display').style.color = "#fff";
+      }
+
+      timeDisplay.innerText = timeRemaining;
+      if (timeRemaining <= 5) {
+        timeDisplay.classList.add('timer-warning');
+      } else {
+        timeDisplay.classList.remove('timer-warning');
+      }
+    }
+
+    function togglePause() {
+      isPaused = !isPaused;
+      document.getElementById('pause-btn').innerText = isPaused ? "Resume" : "Pause";
+    }
+
+    function resetWorkout() {
+      clearInterval(timerInterval);
+      isPaused = false;
+      document.getElementById('pause-btn').innerText = "Pause";
+      document.getElementById('config-screen').style.display = 'block';
+      document.getElementById('timer-screen').style.display = 'none';
+    }
+
+    // Save inputs when changed directly
+    document.getElementById('total-rounds').addEventListener('change', saveData);
+    document.getElementById('rest-duration').addEventListener('change', saveData);
+
+    renderExercises();
+  </script>
+</body>
+</html>
