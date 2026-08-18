@@ -148,10 +148,9 @@
       font-weight: 800;
       margin-top: 8px;
       letter-spacing: 0.5px;
+      background: rgba(48, 209, 88, 0.2);
+      color: #30d158;
     }
-
-    .badge-work { background: rgba(48, 209, 88, 0.2); color: #30d158; }
-    .badge-rest { background: rgba(10, 132, 255, 0.2); color: #0a84ff; }
 
     .exercise-title {
       font-size: 38px;
@@ -190,15 +189,9 @@
     
     <div class="card">
       <label>Workout Settings</label>
-      <div style="display: flex; gap: 10px;">
-        <div style="flex: 1;">
-          <small style="color:#8e8e93;">Rounds</small>
-          <input type="number" id="total-rounds" value="3" min="1">
-        </div>
-        <div style="flex: 1;">
-          <small style="color:#8e8e93;">Rest (Sec)</small>
-          <input type="number" id="rest-duration" value="15" min="0">
-        </div>
+      <div>
+        <small style="color:#8e8e93;">Rounds</small>
+        <input type="number" id="total-rounds" value="3" min="1">
       </div>
     </div>
 
@@ -221,7 +214,7 @@
   <div id="timer-screen">
     <div>
       <div class="round-indicator" id="round-text">Round 1 of 3</div>
-      <div class="badge" id="status-badge">EXERCISE</div>
+      <div class="badge" id="status-badge">EXERCISE 1/3</div>
     </div>
 
     <div>
@@ -247,12 +240,10 @@
     // Load from Local Storage or set defaults
     let exercises = JSON.parse(localStorage.getItem('timer_exercises')) || defaultExercises;
     let totalRounds = parseInt(localStorage.getItem('timer_rounds')) || 3;
-    let restDuration = parseInt(localStorage.getItem('timer_rest')) || 15;
 
     let currentRound = 1;
     let currentIndex = 0;
     let timeRemaining = 0;
-    let isResting = false;
     let isPaused = false;
     let timerInterval = null;
     let audioCtx = null;
@@ -261,7 +252,6 @@
     function saveData() {
       localStorage.setItem('timer_exercises', JSON.stringify(exercises));
       localStorage.setItem('timer_rounds', document.getElementById('total-rounds').value);
-      localStorage.setItem('timer_rest', document.getElementById('rest-duration').value);
     }
 
     function renderExercises() {
@@ -279,7 +269,6 @@
         `;
       });
       document.getElementById('total-rounds').value = totalRounds;
-      document.getElementById('rest-duration').value = restDuration;
     }
 
     function addExercise() {
@@ -319,17 +308,10 @@
       }
     }
 
-    // 1-Second Continuous Vibration
+    // 1-Second Continuous Vibration for Exercise Transitions
     function triggerLongVibration() {
       if (navigator.vibrate) {
         navigator.vibrate(1000); // 1000ms = 1 full second vibration
-      }
-    }
-
-    // Short Haptic for Rest Period endings
-    function triggerShortHaptics() {
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]);
       }
     }
 
@@ -338,11 +320,9 @@
       saveData();
 
       totalRounds = parseInt(document.getElementById('total-rounds').value) || 1;
-      restDuration = parseInt(document.getElementById('rest-duration').value) || 0;
       
       currentRound = 1;
       currentIndex = 0;
-      isResting = false;
       timeRemaining = exercises[0].duration;
 
       // Unlock Web Audio context on user gesture
@@ -371,30 +351,10 @@
     }
 
     function advanceTimer() {
+      // Audio beep and 1s vibration at the end of every exercise
       playBeep(880, 0.4);
+      triggerLongVibration();
 
-      if (!isResting) {
-        // Just finished an exercise -> Trigger 1s Vibration!
-        triggerLongVibration();
-
-        if (restDuration > 0) {
-          isResting = true;
-          timeRemaining = restDuration;
-        } else {
-          // No rest period configured, move straight to next exercise or round
-          moveToNextExerciseOrRound();
-        }
-      } else {
-        // Just finished a rest period -> Trigger short notification haptic
-        triggerShortHaptics();
-        isResting = false;
-        moveToNextExerciseOrRound();
-      }
-
-      updateTimerUI();
-    }
-
-    function moveToNextExerciseOrRound() {
       if (currentIndex < exercises.length - 1) {
         currentIndex++;
         timeRemaining = exercises[currentIndex].duration;
@@ -407,27 +367,20 @@
         playBeep(880, 0.6);
         setTimeout(() => alert("Workout Completed! Great Job!"), 100);
         resetWorkout();
+        return;
       }
+
+      updateTimerUI();
     }
 
     function updateTimerUI() {
       document.getElementById('round-text').innerText = `Round ${currentRound} of ${totalRounds}`;
-      const badge = document.getElementById('status-badge');
+      document.getElementById('status-badge').innerText = `EXERCISE ${currentIndex + 1}/${exercises.length}`;
+      document.getElementById('exercise-display').innerText = exercises[currentIndex].name;
+
       const timeDisplay = document.getElementById('time-display');
-
-      if (isResting) {
-        badge.innerText = "REST PERIOD";
-        badge.className = "badge badge-rest";
-        document.getElementById('exercise-display').innerText = "REST";
-        document.getElementById('exercise-display').style.color = "#0a84ff";
-      } else {
-        badge.innerText = `EXERCISE ${currentIndex + 1}/${exercises.length}`;
-        badge.className = "badge badge-work";
-        document.getElementById('exercise-display').innerText = exercises[currentIndex].name;
-        document.getElementById('exercise-display').style.color = "#fff";
-      }
-
       timeDisplay.innerText = timeRemaining;
+      
       if (timeRemaining <= 5) {
         timeDisplay.classList.add('timer-warning');
       } else {
@@ -448,9 +401,8 @@
       document.getElementById('timer-screen').style.display = 'none';
     }
 
-    // Save inputs when changed directly
+    // Save rounds input when changed directly
     document.getElementById('total-rounds').addEventListener('change', saveData);
-    document.getElementById('rest-duration').addEventListener('change', saveData);
 
     renderExercises();
   </script>
