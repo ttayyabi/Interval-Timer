@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+ 
+<html lang="en">
+ 
+<head>
+ 
+<meta charset="UTF-8">
+ 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+ 
+<title>Workout Timer</title>
+ 
+ 
+<style>
+ 
+body {
+ 
+    margin: 0;
+ 
+    font-family: Arial, sans-serif;
+ 
+    background: #000;
+ 
+    color: white;
+ 
+}
+ 
+ 
+.container {
+ 
+    max-width: 450px;
+ 
+    margin: auto;
+ 
+    padding: 15px;
+ 
+}
+ 
+ 
+.card {
+ 
+    background: #111827;
+ 
+    border-radius: 20px;
+ 
+    padding: 20px;
+ 
+    margin-top: 15px;
+ 
+}
+ 
+ 
+h1 {
+ 
+    text-align: center;
+ 
+    margin-bottom: 20px;
+ 
+}
+ 
+ 
+input {
+ 
+    width: 100%;
+ 
+    box-sizing: border-box;
+ 
+    padding: 12px;
+ 
+    border-radius: 10px;
+ 
+    border: none;
+ 
+    background: #374151;
+ 
+    color: white;
+ 
+    font-size: 16px;
+ 
+    margin-top: 5px;
+ 
+}
+ 
+ 
+.exercise-card {
+ 
+    background: #1f2937;
+ 
+    padding: 12px;
+ 
+    border-radius: 12px;
+ 
+    margin-bottom: 10px;
+ 
+}
+ 
+ 
+.timer-display {
+ 
+    text-align: center;
+ 
+}
+ 
+ 
+.timer {
+ 
+    font-size: 90px;
+ 
+    color: #22d3ee;
+ 
+    font-weight: bold;
+ 
+}
+ 
+ 
+.exercise-name {
+ 
+    font-size: 28px;
+ 
+    font-weight: bold;
+ 
+    margin: 10px 0;
+ 
+}
+ 
+ 
+.round {
+ 
+    font-size: 18px;
+ 
+    color: #d1d5db;
+ 
+}
+ 
+ 
+.button-row {
+ 
+    display: grid;
+ 
+    grid-template-columns: repeat(3,1fr);
+ 
+    gap: 10px;
+ 
+    margin-top: 20px;
+ 
+}
+ 
+ 
+button {
+ 
+    padding: 14px;
+ 
+    border: none;
+ 
+    border-radius: 12px;
+ 
+    font-size: 16px;
+ 
+    font-weight: bold;
+ 
+}
+ 
+ 
+.start {
+ 
+    background: #16a34a;
+ 
+    color: white;
+ 
+}
+ 
+ 
+.pause {
+ 
+    background: #facc15;
+ 
+    color: black;
+ 
+}
+ 
+ 
+.reset {
+ 
+    background: #dc2626;
+ 
+    color: white;
+ 
+}
+ 
+ 
+.settings-row {
+ 
+    display: grid;
+ 
+    grid-template-columns: 1fr 1fr;
+ 
+    gap: 10px;
+ 
+}
+ 
+ 
+label {
+ 
+    display: block;
+ 
+    margin-bottom: 5px;
+ 
+}
+ 
+</style>
+ 
+</head>
+ 
+ 
+<body>
+ 
+ 
+<div class="container">
+ 
+ 
+    <h1>Workout Timer</h1>
+ 
+ 
+    <div id="exerciseContainer"></div>
+ 
+ 
+    <div class="settings-row">
+ 
+        <div>
+ 
+            <label>Rest Seconds</label>
+ 
+            <input type="number" id="rest" value="15">
+ 
+        </div>
+ 
+ 
+        <div>
+ 
+            <label>Rounds</label>
+ 
+            <input type="number" id="rounds" value="4">
+ 
+        </div>
+ 
+    </div>
+ 
+ 
+    <div class="card timer-display">
+ 
+        <div class="round" id="roundDisplay">Round 1 / 4</div>
+ 
+ 
+        <div class="exercise-name" id="exerciseDisplay">
+ 
+            Push Ups
+ 
+        </div>
+ 
+ 
+        <div class="timer" id="timer">
+ 
+            45
+ 
+        </div>
+ 
+ 
+        <div id="phaseDisplay">
+ 
+            WORK
+ 
+        </div>
+ 
+    </div>
+ 
+ 
+    <div class="button-row">
+ 
+        <button class="start" onclick="startWorkout()">Start</button>
+ 
+        <button class="pause" onclick="pauseWorkout()">Pause</button>
+ 
+        <button class="reset" onclick="resetWorkout()">Reset</button>
+ 
+    </div>
+ 
+ 
+</div>
+ 
+ 
+<script>
+ 
+ 
+let exercises = [
+ 
+    { name: "Push Ups", work: 45 },
+ 
+    { name: "Squats", work: 60 },
+ 
+    { name: "Plank", work: 30 }
+ 
+];
+ 
+ 
+let timerInterval;
+ 
+let running = false;
+ 
+let paused = false;
+ 
+ 
+let currentRound = 1;
+ 
+let currentExercise = 0;
+ 
+let phase = "work";
+ 
+let timeRemaining = exercises[0].work;
+ 
+ 
+function renderExercises() {
+ 
+    const container = document.getElementById("exerciseContainer");
+ 
+    container.innerHTML = "";
+ 
+ 
+    exercises.forEach((exercise, index) => {
+ 
+ 
+        const card = document.createElement("div");
+ 
+        card.className = "exercise-card";
+ 
+ 
+        card.innerHTML = `
+ 
+            <label>Exercise ${index + 1}</label>
+ 
+ 
+            <input
+ 
+                value="${exercise.name}"
+ 
+                onchange="updateExerciseName(${index}, this.value)"
+ 
+            >
+ 
+ 
+            <input
+ 
+                type="number"
+ 
+                value="${exercise.work}"
+ 
+                onchange="updateExerciseTime(${index}, this.value)"
+ 
+            >
+ 
+        `;
+ 
+ 
+        container.appendChild(card);
+ 
+    });
+ 
+}
+ 
+ 
+function updateExerciseName(index, value) {
+ 
+    exercises[index].name = value;
+ 
+}
+ 
+ 
+function updateExerciseTime(index, value) {
+ 
+    exercises[index].work = Number(value);
+ 
+}
+ 
+ 
+function updateDisplay() {
+ 
+ 
+    document.getElementById("timer").innerText =
+ 
+        timeRemaining;
+ 
+ 
+    document.getElementById("exerciseDisplay").innerText =
+ 
+        phase === "work"
+ 
+        ? exercises[currentExercise].name
+ 
+        : "REST";
+ 
+ 
+    document.getElementById("phaseDisplay").innerText =
+ 
+        phase.toUpperCase();
+ 
+ 
+    document.getElementById("roundDisplay").innerText =
+ 
+        `Round ${currentRound} / ${document.getElementById("rounds").value}`;
+ 
+}
+ 
+ 
+function beep() {
+ 
+    const audio = new Audio(
+ 
+      "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAA"
+ 
+    );
+ 
+    audio.play().catch(()=>{});
+ 
+}
+ 
+ 
+function startWorkout() {
+ 
+ 
+    clearInterval(timerInterval);
+ 
+ 
+    running = true;
+ 
+    paused = false;
+ 
+ 
+    currentRound = 1;
+ 
+    currentExercise = 0;
+ 
+    phase = "work";
+ 
+ 
+    timeRemaining = exercises[0].work;
+ 
+ 
+    updateDisplay();
+ 
+ 
+    timerInterval = setInterval(() => {
+ 
+ 
+        if (!running || paused) return;
+ 
+ 
+        timeRemaining--;
+ 
+ 
+        if (timeRemaining <= 0) {
+ 
+ 
+            beep();
+ 
+ 
+            const rest =
+ 
+                Number(document.getElementById("rest").value);
+ 
+ 
+            const rounds =
+ 
+                Number(document.getElementById("rounds").value);
+ 
+ 
+            if (phase === "work") {
+ 
+ 
+                phase = "rest";
+ 
+                timeRemaining = rest;
+ 
+ 
+            } else {
+ 
+ 
+                if (currentExercise < exercises.length - 1) {
+ 
+ 
+                    currentExercise++;
+ 
+                    phase = "work";
+ 
+                    timeRemaining =
+ 
+                        exercises[currentExercise].work;
+ 
+ 
+                } else {
+ 
+ 
+                    if (currentRound < rounds) {
+ 
+ 
+                        currentRound++;
+ 
+                        currentExercise = 0;
+ 
+                        phase = "work";
+ 
+                        timeRemaining =
+ 
+                            exercises[0].work;
+ 
+ 
+                    } else {
+ 
+ 
+                        running = false;
+ 
+                        clearInterval(timerInterval);
+ 
+ 
+                        document.getElementById("exerciseDisplay").innerText =
+ 
+                            "Workout Complete!";
+ 
+ 
+                        document.getElementById("phaseDisplay").innerText =
+ 
+                            "DONE";
+ 
+                    }
+ 
+                }
+ 
+            }
+ 
+        }
+ 
+ 
+        updateDisplay();
+ 
+ 
+    }, 1000);
+ 
+}
+ 
+ 
+function pauseWorkout() {
+ 
+    paused = !paused;
+ 
+ 
+    document.querySelector(".pause").innerText =
+ 
+        paused ? "Resume" : "Pause";
+ 
+}
+ 
+ 
+function resetWorkout() {
+ 
+ 
+    clearInterval(timerInterval);
+ 
+ 
+    running = false;
+ 
+    paused = false;
+ 
+ 
+    currentRound = 1;
+ 
+    currentExercise = 0;
+ 
+    phase = "work";
+ 
+ 
+    timeRemaining = exercises[0].work;
+ 
+ 
+    document.querySelector(".pause").innerText =
+ 
+        "Pause";
+ 
+ 
+    updateDisplay();
+ 
+}
+ 
+ 
+renderExercises();
+ 
+updateDisplay();
+ 
+ 
+</script>
+ 
+ 
+</body>
+ 
+</html>
